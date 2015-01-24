@@ -1,9 +1,210 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="utf-8">
   <title>Test</title>
+  <style type="text/css">
+    * {
+      padding: 0;
+      margin: 0;
+      /*pointer-events: none;*/
+    }
+
+    body {
+      padding: 10px;
+      font-family: helvetica,sans-serif;
+      /*pointer-events: none;*/
+    }
+
+    #boxes {
+      font-size: 0;
+    }
+
+    .cell{
+      /*pointer-events: auto;*/
+      font-size: 20px;
+      text-align: center;
+      line-height: 50px;
+      color: white;
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      background: red;
+      box-sizing: border-box;
+      border: 1px solid white;
+      vertical-align: top;
+      z-index: 1000;
+    }
+
+    .cell.selected {
+      background: green;
+    }
+
+    .cell.used {
+      background: gray;
+    }
+  </style>
+  <script src="http://libs.baidu.com/jquery/1.9.0/jquery.js"></script>
+  <script>
+
+    var findCurrentCell = function(x, y){
+      var found = null;
+      $('.cell').each(function(){
+        if (
+          x >= $(this).offset().left && x <= $(this).offset().left + $(this).outerWidth() &&
+          y >= $(this).offset().top  && y <= $(this).offset().top + $(this).outerHeight()
+        ) {
+          found = $(this);
+          return false;
+        }
+      });
+
+      return found;
+    };
+
+    $(document).on('touchmove', function(event) {
+      event.preventDefault();
+    }, false);
+
+    $(document).on('touchmove', '#boxes', function(e){
+      var currentCell = findCurrentCell(event.touches[0].clientX, event.touches[0].clientY);
+      if(!currentCell){
+        return;
+      }
+
+      game.addCellToCurrentPath(currentCell);
+
+      // addLog(currentCell);
+    }).on('touchstart', '#boxes', function(e){
+      var currentCell = findCurrentCell(event.touches[0].clientX, event.touches[0].clientY);
+      if(!currentCell){
+        return;
+      }
+
+      game.addCellToCurrentPath(currentCell);
+    }).on('touchend', '#boxes', function(){
+      game.computeCurrentPath();
+      $('.cell').removeClass('selected')
+    });
+
+    var Game = function(){
+      this.currentPath = [];
+      this.score = 0;
+      this.dict = ['FUCK'];
+    };
+
+    var addLog = function(cell){
+      $('#log').html(cell.data('x') + ' ' + cell.data('y') + '<br>' + $('#log').html());
+    };
+
+    Game.prototype.init = function(){
+      var boxes = $('#boxes');
+      var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+      for(var i=0; i<9; i++){
+        var row = $('<div class="box-row" data-x="' + i + '"></div>');
+        for(var j=0; j<6; j++){
+          if(i === 2 && j === 4){
+            var randomChar = "F";
+          } else if(i === 3 && j === 4){
+            var randomChar = "U";
+          } else if(i === 4 && j === 4){
+            var randomChar = "C";
+          } else if(i === 5 && j === 4){
+            var randomChar = "K";
+          } else {
+            var randomChar = possible.charAt(Math.floor(Math.random() * possible.length));
+          }
+          row.append($('<div class="cell" data-x="' + i + '" data-y="' + j + '">' + randomChar + '</div>'));
+        };
+        boxes.append(row);
+      }
+    };
+
+    Game.prototype.twoCellClose = function(cellA, cellB){
+      var aX = cellA.data('x');
+      var bX = cellB.data('x');
+      var aY = cellA.data('y');
+      var bY = cellB.data('y');
+      if(aX === bX){
+        return Math.abs(aY - bY) === 1;
+      }
+
+      if(aY === bY){
+        return Math.abs(aX - bX) === 1;
+      }
+
+      return false;
+    }
+
+    Game.prototype.addCellToCurrentPath = function(cell){
+      if(cell.data('disabled')){
+        return;
+      }
+
+      if(this.currentPath.length > 0){
+        var lastCell = this.currentPath[this.currentPath.length-1];
+
+        // still the last item
+        if(lastCell.get(0) === cell.get(0)){
+          return;
+        }
+
+        // not close item
+        if(!this.twoCellClose(lastCell, cell)){
+          return;
+        }
+      }
+
+      var dupe = false;
+      $.each(this.currentPath, function(){
+        if(this.get(0) === cell.get(0)){
+          dupe = true;
+          return false;
+        }
+      });
+
+      if(!dupe){
+        cell.addClass('selected')
+        this.currentPath.push(cell);
+      }
+    };
+
+    Game.prototype.computeCurrentPath = function(){
+      var word = '';
+      $.each(this.currentPath, function(){
+        word += $.trim(this.html());
+      });
+      // console.log(word);
+      var that = this;
+      $.each(this.dict, function(){
+        if(word.toUpperCase() == this){
+
+          // for(var i=0; i<this.currentPath.length; i++){
+          //   this.currentPath[i].data('disabled', 'true');
+          // }
+          $.each(that.currentPath, function(){
+            this.data('disabled', 'true');
+            this.addClass('used');
+          });
+          return false;
+        }
+      });
+
+      this.currentPath = [];
+    };
+
+    $(function(){
+      window.game = new Game();
+      game.init();
+    });
+  </script>
 </head>
 <body>
-  <h1>project test</h1>
+  <div id="boxes">
+  </div>
+
+  <div id="log"></div>
 </body>
 </html>
